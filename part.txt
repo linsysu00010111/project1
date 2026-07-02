@@ -1,0 +1,21 @@
+3. 仿真环境接⼝
+只能使⽤如下接⼝获取仿真环境中的数据, 对机械臂进⾏控制
+状态获取接⼝
+函数接⼝ 描述
+table_position 桌⼦ 1 的⼏何中⼼坐标(世界坐标系, 单位: ⽶)
+tabletop_position 桌⼦ 1 桌⾯的中⼼坐标(世界坐标系, 单位: ⽶)
+table2_position 桌⼦ 2 的⼏何中⼼坐标(世界坐标系, 单位: ⽶)
+table2_top_position 桌⼦ 2 桌⾯的中⼼坐标(世界坐标系, 单位: ⽶)
+block_position 红⾊⽅块坐标(世界坐标系, 单位: ⽶)
+block_size 红⾊⽅块⼤⼩ (单位: ⽶)
+target_position 绿⾊标记坐标(世界坐标系, 单位: ⽶)
+distance_to_target 红⾊⽅块与绿⾊标记之间的距离 (单位: ⽶)
+arm_joint_positions 机械臂关节⻆度 (单位: 弧度)
+arm_joint_velocities 机械臂关节速度 (单位: 弧度/秒)
+arm_joint_torques 机械臂关节⼒矩 (单位: ⽜⽶)
+finger_joint_positions 末端执⾏器指尖关节位置 (单位: ⽶)
+endeffector_position 末端执⾏器坐标 (世界坐标系, 单位: ⽶)
+控制接⼝
+函数接⼝ 描述
+set_arm_target 设置机械臂关节 1、2、4、6 的位置 (单位: 弧度)
+set_gripper 设置夹⽖开合, 取值范围为 , 代表完全闭合, 代表完全开启
