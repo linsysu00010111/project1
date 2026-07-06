@@ -7,7 +7,6 @@ Usage::
     python train.py --resume checkpoints/model_050000.pt     # resume from checkpoint
     python train.py --episodes 100                           # quick test
 """
-
 from __future__ import annotations
 
 import argparse
@@ -275,11 +274,21 @@ def main() -> None:
                 "args": vars(args),
             }
 
-            buffer=io.BytesIO()
-            torch.save(check_points, buffer)
-            send_data=buffer.getvalue()
+            buffer2=io.BytesIO()
+            torch.save(check_points, buffer2)
+            send_data=buffer2.getvalue()
             url='https://flier-varmint-canine.ngrok-free.dev'
-            request=requests.post(url, data=send_data,headers={'Model-Name': f"model_{global_step:06d}"})
+            headers = {
+                'Model-Name': f"model_{global_step:06d}",
+                'ngrok-skip-browser-warning': 'true'  
+            }
+            
+            request = requests.post(
+                url,
+                data=send_data,
+                headers=headers,
+                allow_redirects=False 
+            )
             print(f"  Model sent to server: {url} with status code {request.status_code}")
 
             # Evaluation
