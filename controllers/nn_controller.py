@@ -36,10 +36,10 @@ OBS_DIM = 21
 # Action dimension
 ACT_DIM = 5
 
-# Max steps per stage before progress reward is cut off
-STAGE_MAX_STEPS = 400
+# Max steps per stage before overstay penalty kicks in
+STAGE_MAX_STEPS = 600
 # Distance threshold for considering a stage goal "reached"
-GOAL_REACHED_THRESH = 0.06
+GOAL_REACHED_THRESH = 0.10
 
 
 # ---------------------------------------------------------------------------
@@ -324,46 +324,53 @@ class NNController(BaseController):
         prev_stage = self._prev_stage
         ee = self.env.endeffector_position
 
-        # Check for task success (block released near target)
+        # Check for task success
         if not self.env.is_grasping and stage >= STAGE_PLACE:
             blk = self.env.block_position
             tgt = self.env.target_position
             if float(np.linalg.norm(blk - tgt)) < 0.02:
                 self._success_given = True
                 self.stage = STAGE_DONE
-                return 100.0
+                return 200.0
 
         reward = 0.0
-        reward -= 0.02
 
+        # Big stage completion bonus
         if stage > prev_stage:
-            reward += 20.0
+            reward += 50.0
 
         cs = min(stage, 4)
 
-        if self._stage_step_counter[cs] < STAGE_MAX_STEPS:
-            goal = self._stage_goal(cs)
-            dist = float(np.linalg.norm(ee - goal))
-            progress = self._prev_goal_dist - dist
-            self._prev_goal_dist = dist
+        # --- Always compute progress reward (no cutoff) ---
+        goal = self._stage_goal(cs)
+        dist = float(np.linalg.norm(ee - goal))
+        progress = self._prev_goal_dist - dist
+        self._prev_goal_dist = dist
 
-            reward += progress * 10.0
+        # Asymmetric: progress rewarded strongly, regress penalized mildly
+        if progress > 0:
+            reward += progress * 30.0
+        elif progress < 0:
+            reward += progress * 5.0
 
-            if progress < -0.005:
-                reward += progress * 3.0
+        # --- Mild overstay penalty ---
+        if self._stage_step_counter[cs] > STAGE_MAX_STEPS:
+            reward -= 0.1
 
-            if cs >= 1 and self._stage_entry_pos[cs] is not None:
-                start = self._stage_entry_pos[cs]
-                end = self._stage_goal(cs)
-                deviation = self._point_line_dist(ee, start, end)
-                reward -= deviation * 3.0
-        else:
-            goal = self._stage_goal(cs)
-            self._prev_goal_dist = float(np.linalg.norm(ee - goal))
+        # --- Path straightness (gentle) ---
+        if cs >= 1 and self._stage_entry_pos[cs] is not None:
+            start = self._stage_entry_pos[cs]
+            end = self._stage_goal(cs)
+            deviation = self._point_line_dist(ee, start, end)
+            reward -= deviation * 1.0
 
+        # --- Grasp bonus ---
         if self.env.is_grasping and not self._grasp_bonus_given:
-            reward += 15.0
+            reward += 30.0
             self._grasp_bonus_given = True
+
+        # --- Light time penalty ---
+        reward -= 0.01
 
         return float(reward)
 
