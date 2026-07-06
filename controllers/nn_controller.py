@@ -36,8 +36,6 @@ OBS_DIM = 21
 # Action dimension
 ACT_DIM = 5
 
-# Max steps per stage before overstay penalty kicks in
-STAGE_MAX_STEPS = 600
 # Distance threshold for considering a stage goal "reached"
 GOAL_REACHED_THRESH = 0.10
 
@@ -324,7 +322,7 @@ class NNController(BaseController):
         prev_stage = self._prev_stage
         ee = self.env.endeffector_position
 
-        # Check for task success
+        # Check for task success (block at target, gripper open)
         if not self.env.is_grasping and stage >= STAGE_PLACE:
             blk = self.env.block_position
             tgt = self.env.target_position
@@ -335,42 +333,32 @@ class NNController(BaseController):
 
         reward = 0.0
 
-        # Big stage completion bonus
+        # Stage completion bonus
         if stage > prev_stage:
             reward += 50.0
 
         cs = min(stage, 4)
 
-        # --- Always compute progress reward (no cutoff) ---
+        # Progress reward (always on, never cut off)
         goal = self._stage_goal(cs)
         dist = float(np.linalg.norm(ee - goal))
         progress = self._prev_goal_dist - dist
         self._prev_goal_dist = dist
 
-        # Asymmetric: progress rewarded strongly, regress penalized mildly
         if progress > 0:
             reward += progress * 30.0
-        elif progress < 0:
-            reward += progress * 5.0
 
-        # --- Mild overstay penalty ---
-        if self._stage_step_counter[cs] > STAGE_MAX_STEPS:
-            reward -= 0.1
-
-        # --- Path straightness (gentle) ---
+        # Path straightness (gentle)
         if cs >= 1 and self._stage_entry_pos[cs] is not None:
             start = self._stage_entry_pos[cs]
             end = self._stage_goal(cs)
             deviation = self._point_line_dist(ee, start, end)
-            reward -= deviation * 1.0
+            reward -= min(deviation * 1.0, 0.5)
 
-        # --- Grasp bonus ---
+        # Grasp bonus
         if self.env.is_grasping and not self._grasp_bonus_given:
             reward += 30.0
             self._grasp_bonus_given = True
-
-        # --- Light time penalty ---
-        reward -= 0.01
 
         return float(reward)
 

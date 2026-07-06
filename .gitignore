@@ -1,0 +1,5 @@
+uploaded_model/
+checkpoints/
+*.md
+*.pdf
+receive.py
